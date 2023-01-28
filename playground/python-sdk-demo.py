@@ -5,7 +5,6 @@ from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 
 # get environment variables
-print('[ INFO ] Collecting environment variables (ALPACA_API_KEY_ID, ALPACA_SECRET_KEY)...')
 API_KEY = os.getenv('ALPACA_API_KEY_ID')
 SECRET_KEY = os.getenv('ALPACA_SECRET_KEY')
 
@@ -16,7 +15,6 @@ if API_KEY == None or SECRET_KEY == None:
     quit()
 
 # create Alpaca clients
-print('[ INFO ] Creating Alpaca clients...')
 crypto_client = CryptoHistoricalDataClient()
 stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
