@@ -4,7 +4,7 @@ This script pulls minute bars for an inputted ticker symbol for an inputted
 date range and insert the data into the bars_minute PostgreSQL table in RDS.
 
 Usage:
-$ python load-bars-minute.py -t/--ticker INTC -s/--start 2022-03-14 -e/--end 2022-04-20
+$ python load-bars-minute.py -t/--ticker INTC -s/--start 20220314 -e/--end 20220420
 
 Required Environment Variables:
 ALPACA_API_KEY_ID, ALPACA_SECRET_KEY, PG_HOST, PG_PORT, PG_DB_NAME, 
@@ -16,7 +16,9 @@ holidays where no bars will be collected, and early-close holidays where bars
 will be collected from 8:00AM to 1:00PM EST.
 '''
 
-from datetime import datetime, timezone
+import argparse
+import datetime
+import json
 import os
 import sys
 
@@ -27,6 +29,27 @@ from alpaca.data.timeframe import TimeFrame
 from sqlalchemy import create_engine, sql
 
 def main() -> int:
+    #--------------------------------------------------------------------------
+    # Collect arguments
+    #--------------------------------------------------------------------------
+    
+    parser = argparse.ArgumentParser(
+        prog = 'load-bars-minute.py', 
+        description = 'This script pulls minute bars for an inputted ticker symbol for an inputted date range and insert the data into the bars_minute PostgreSQL table in RDS.', 
+        epilog = 'Made with love at Udon Code Studios ❤️'
+        )
+    
+    parser.add_argument('-t', '--tickers', dest='tickers', action='store', required=True, help='Comma separated list of ticker symbol(s) (e.g. INTC,NVDA,WM)')
+    parser.add_argument('-s', '--start', dest='start', action='store', required=True, help='Start date in YYYYMMDD format (inclusive).')
+    parser.add_argument('-e', '--end', dest='end', action='store', required=True, help='End date in YYYYMMDD format (inclusive).')
+
+    args = parser.parse_args()
+
+    tickers = args.tickers.split(",")
+    start = YYYYMMDDtoDate(args.start)
+    current = start
+    end = YYYYMMDDtoDate(args.end)
+
     #--------------------------------------------------------------------------
     # Environment setup
     #--------------------------------------------------------------------------
@@ -54,6 +77,9 @@ def main() -> int:
         print('[ INFO ] Exiting with code -1.')
         return -1
 
+    # load holidays from properties
+    holidays = loadHolidays('../properties/market-holidays.json')
+
     #--------------------------------------------------------------------------
     # Establish connections
     #--------------------------------------------------------------------------
@@ -65,6 +91,29 @@ def main() -> int:
     conn_string = "postgresql://{}:{}@{}:{}/{}".format(PG_USERNAME, PG_PASSWORD, PG_HOST, PG_PORT, PG_DB_NAME)
     db = create_engine(conn_string)
     conn = db.connect()
+
+    #------------------------------------------------------------------------------
+    # Data loading loop
+    #------------------------------------------------------------------------------
+
+    # loop from start to end dates one day at a time
+    delta = datetime.timedelta(days=1)
+    while current <= end:
+        # skip weekends
+        if isWeekend(current):
+            current += delta
+            continue
+
+        # skip holidays
+        if isHoliday(current):
+            current += delta
+            continue
+
+        # 
+
+
+        # go to next day
+        current += delta
     
     #--------------------------------------------------------------------------
     # Close connections
@@ -82,6 +131,35 @@ def main() -> int:
 
     print('[ INFO ] Exiting normally with code 0.') 
     return 0
+
+'''
+Converts a string in YYYYMMDD format to a datetime.date object.
+Undefined behavior if input is not a valid YYYYMMDD string.
+'''
+def YYYYMMDDtoDate(input: str) -> datetime.date: 
+    year = int(input[0:4])
+    month = int(input[4:6])
+    day = int(input[6:8])
+    return datetime.date(year, month, day)
+
+def isWeekend(date: datetime.date) -> bool:
+    return date.weekday() >= 5
+
+def isHoliday(date: datetime.date, holidays: dict[str, list]) -> bool:
+    for holiday in holidays[str(date.year)]:
+        if date.month == holiday['month'] and date.day == holiday['day']:
+            return True
+
+    return False
+
+def loadHolidays(path: str) -> dict:
+    # open market-holidays.json file
+    file = open(path)
+
+    # read json into dictionary
+    holidays = json.load(file)
+
+    return holidays
 
 if __name__ == '__main__':
     sys.exit(main())
