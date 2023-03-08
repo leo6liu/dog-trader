@@ -7,10 +7,12 @@ A trading bot which uses an ML model trained on historical stock data.
 - DB table to store minute bar data has been created.
 - A demo script has been written to pull market data from Alpaca.
 - A demo script has been written to pull data from DB into a DataFrame.
+- Script to load minute bar data into DB for historical trading days.
 
 ## Next Steps
 
-- Script to load minute bar data into DB for historical trading days.
+- Train model which predicts ticker price at next minute (using only single ticker input).
+- Demo script to execute trades with Alpaca.
 
 ## Future Visions
 
