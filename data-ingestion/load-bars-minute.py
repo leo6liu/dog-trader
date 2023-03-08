@@ -11,7 +11,7 @@ ALPACA_API_KEY_ID, ALPACA_SECRET_KEY, PG_HOST, PG_PORT, PG_DB_NAME,
 PG_USERNAME, PG_PASSWORD
 
 Details:
-Each weekday bars will be collected from 8:00AM to 4:00PM EST, except on 
+Each weekday bars will be collected from 8:00AM to 6:00PM EST, except on 
 holidays where no bars will be collected, and early-close holidays where bars 
 will be collected from 8:00AM to 1:00PM EST.
 '''
@@ -37,7 +37,7 @@ def main() -> int:
         prog = 'load-bars-minute.py', 
         description = 'This script pulls minute bars for an inputted ticker symbol for an inputted date range and insert the data into the bars_minute PostgreSQL table in RDS.', 
         epilog = 'Made with love at Udon Code Studios ❤️'
-        )
+    )
     
     parser.add_argument('-t', '--tickers', dest='tickers', action='store', required=True, help='Comma separated list of ticker symbol(s) (e.g. INTC,NVDA,WM)')
     parser.add_argument('-s', '--start', dest='start', action='store', required=True, help='Start date in YYYYMMDD format (inclusive).')
@@ -80,6 +80,9 @@ def main() -> int:
     # load holidays from properties
     holidays = loadHolidays('../properties/market-holidays.json')
 
+    # hard-code table name
+    PG_TABLE = 'bars_minute'
+
     #--------------------------------------------------------------------------
     # Establish connections
     #--------------------------------------------------------------------------
@@ -105,12 +108,26 @@ def main() -> int:
             continue
 
         # skip holidays
-        if isHoliday(current):
+        if isHoliday(current, holidays):
             current += delta
             continue
 
-        # 
+        # pull minute bars for tickers from 8:00AM to 6:00PM EST
+        start_dt = getUTCfromEST(datetime.datetime(current.year, current.month, current.day, 8, 00, tzinfo=datetime.timezone.utc))
+        end_dt = getUTCfromEST(datetime.datetime(current.year, current.month, current.day, 18, 00, tzinfo=datetime.timezone.utc))
+        print(f'[ INFO ] Fetching minute bars for {tickers} from 08:00 to 18:00 EST on {current}')
+        request_params = StockBarsRequest(symbol_or_symbols=tickers, timeframe=TimeFrame.Minute, start=start_dt, end=end_dt)
+        stock_bars_minute = stock_client.get_stock_bars(request_params)
 
+        # convert alpaca data to DataFrame and fix columns to match db
+        stock_bars_minute_df = stock_bars_minute.df
+        stock_bars_minute_df.reset_index(inplace=True)
+        stock_bars_minute_df.drop('trade_count', axis=1, inplace=True)
+        stock_bars_minute_df.drop('vwap', axis=1, inplace=True)
+
+        # insert rows and commit
+        stock_bars_minute_df.to_sql(name=PG_TABLE, con=conn, if_exists='append', index=False)
+        conn.commit()
 
         # go to next day
         current += delta
@@ -161,37 +178,44 @@ def loadHolidays(path: str) -> dict:
 
     return holidays
 
+def getUTCfromEST(estDatetime: datetime.datetime) -> datetime.datetime:
+    if isDST(datetime.date(estDatetime.year, estDatetime.month, estDatetime.day)):
+        return estDatetime.astimezone(datetime.timezone.utc) + datetime.timedelta(hours=4)
+    else:
+        return estDatetime.astimezone(datetime.timezone.utc) + datetime.timedelta(hours=5)
+    
+'''
+During DST, clocks are moved forward 1 hr (e.g. 13:00 —> 14:00).
+DST begins at 02:00 on the second Sunday of March.
+DST ends at 02:00 on the first Sunday of November.
+'''
+def isDST(date: datetime.date) -> bool:
+    if date.month < 3 or date.month > 11:
+        return False
+    elif date.month > 3 and date.month < 11:
+        return True
+    elif date.month == 3:
+        return date.day >= getDayOfSecondSundayOfMarch(date.year)
+    else: # date.month == 11
+        return date.day < getDayOfFirstSundayOfNovember(date.year)
+
+def getDayOfSecondSundayOfMarch(year: int) -> int:
+    return getDayOfOrdinalWeekdayOfMonthOfYear(2, 6, 3, year)
+
+def getDayOfFirstSundayOfNovember(year: int) -> int:
+    return getDayOfOrdinalWeekdayOfMonthOfYear(1, 6, 11, year)
+
+'''
+ordinal (int: first -> 1 ... fourth -> 4)
+weekday (int: Monday -> 0 ... Sunday -> 6)
+month (int: January -> 1 ... December -> 12)
+'''
+def getDayOfOrdinalWeekdayOfMonthOfYear(ordinal: int, weekday: int, month: int, year: int) -> int:
+    first = datetime.date(year, month, 1)
+    firstDayOfWeek = first.weekday()
+    firstWeekday = weekday - firstDayOfWeek + 1
+    ordinalWeekday = firstWeekday + (7 * (ordinal - 1))
+    return ordinalWeekday
+
 if __name__ == '__main__':
     sys.exit(main())
-
-# #------------------------------------------------------------------------------
-# # Pull Alpaca data
-# #------------------------------------------------------------------------------
-
-# # get minute bar for INTC and NVDA on 2023/01/27 from 9:40 to 9:42 EST
-# start_dt = datetime(2023, 1, 27, 14, 40, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:40 UTC
-# end_dt = datetime(2023, 1, 27, 14, 42, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:42 UTC
-# print('[ INFO ] Fetching minute bars for INTC and NVDA on 2023/01/27 for 9:40, 9:41, and 9:42 EST...')
-# request_params = StockBarsRequest(symbol_or_symbols=['INTC','NVDA'], timeframe=TimeFrame.Minute, start=start_dt, end=end_dt)
-# stock_bars_minute = stock_client.get_stock_bars(request_params)
-
-# #------------------------------------------------------------------------------
-# # Push data to DB
-# #------------------------------------------------------------------------------
-
-# # convert alpaca data to DataFrame and fix columns to match db
-# stock_bars_minute_df = stock_bars_minute.df
-# stock_bars_minute_df.reset_index(inplace=True)
-
-# # insert rows and commit
-# stock_bars_minute_df.to_sql(name='bars_minute', con=conn, if_exists='append', index=False)
-# # conn.commit() # uncomment to commit changes to db
-
-# #------------------------------------------------------------------------------
-# # Pull data from DB
-# #------------------------------------------------------------------------------
-
-# stock_bars_minute_df = pd.read_sql_query(sql=sql.text('SELECT * FROM bars_minute'), con=conn)
-# print('[ INFO ] Data from database:')
-# print(stock_bars_minute_df)
-
