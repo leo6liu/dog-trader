@@ -11,8 +11,23 @@ A trading bot which uses an ML model trained on historical stock data.
 
 ## Next Steps
 
+- Ethan local system setup (WSL).
+- Ethan -> Demo script: get sentiment info from ChatGPT (https://help.openai.com/en/collections/3675931-openai-api) (e.g. 0-9, 0-4 sell, 5-9 buy)
+- Ethan -> Figure out pricing and rate limits of ChatGPT API.
+- Leo -> Create trader service.
 - Train model which predicts ticker price at next minute (using only single ticker input).
-- Demo script to execute trades with Alpaca.
+- Demo script: execute trades with Alpaca.
+
+## Data Ingestion (Python)
+
+## Training (Python)
+
+## Trader Logic (Go)
+
+1. get current minute data and calculate numberical perdiction
+2. get sentiment (afterwards put in database for future use)
+3. execute explicit logic based on 1. and 2. to decide buy/hold/sell
+4. execute transaction
 
 ## Future Visions
 
