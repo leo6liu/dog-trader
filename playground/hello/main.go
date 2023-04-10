@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
 func main() {
     // fmt.Println("hello world")
-    client := openai.NewClient("API_TOKEN_GOES_HERE")
+    // fmt.Println(os.Getenv("OPENAI_API_KEY"))
+    client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+    
     resp, err := client.CreateChatCompletion(
         context.Background(),
         openai.ChatCompletionRequest{
