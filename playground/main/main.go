@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
 func main() {
-    // fmt.Println("hello world")
-    // fmt.Println(os.Getenv("OPENAI_API_KEY"))
+    tickers := []string{"AAPL", "TSLA"}
+
     client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-    
+    body := fmt.Sprintf("Retrieve sentiment analysis for %s", strings.Join(tickers, ", ")) 
+       
     resp, err := client.CreateChatCompletion(
         context.Background(),
         openai.ChatCompletionRequest{
@@ -20,7 +22,7 @@ func main() {
             Messages: []openai.ChatCompletionMessage{
                 {
                     Role: openai.ChatMessageRoleUser,
-                    Content: "Hello",
+                    Content: body,
                 },
             },
         },
