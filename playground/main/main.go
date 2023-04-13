@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -13,7 +14,7 @@ func main() {
     tickers := []string{"AAPL", "TSLA"}
 
     client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-    body := fmt.Sprintf("Rate each of %s media attention this week from 0 to 9, with 0 being terrible and 9 being extremely positive", strings.Join(tickers, ", "))
+    body := fmt.Sprintf("What does TipRanks think about %s today?", strings.Join(tickers, ", "))
     fmt.Println(body)
        
     resp, err := client.CreateChatCompletion(
