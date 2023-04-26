@@ -1,2 +1,5 @@
 # script to set environment variables
 local-env.sh
+
+# python caches
+__pychache__/
