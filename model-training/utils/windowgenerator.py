@@ -107,17 +107,17 @@ class WindowGenerator:
                 s=64,
             )
 
-            # if model is not None:
-            #     predictions = model(inputs)
-            #     plt.scatter(
-            #         self.label_indices,
-            #         predictions[n, :, label_col_index],
-            #         marker="X",
-            #         edgecolors="k",
-            #         label="Predictions",
-            #         c="#ff7f0e",
-            #         s=64,
-            #     )
+            if model is not None:
+                predictions = model(inputs)
+                plt.scatter(
+                    self.label_indices,
+                    predictions[n, :, label_col_index],
+                    marker="X",
+                    edgecolors="k",
+                    label="Predictions",
+                    c="#ff7f0e",
+                    s=64,
+                )
 
             # show legend on first subplot
             if n == 0:
