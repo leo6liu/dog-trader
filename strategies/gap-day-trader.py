@@ -5,12 +5,16 @@ import os
 import sys
 
 from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
+from alpaca.trading.client import TradingClient
+from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+from alpaca.trading.enums import OrderSide, TimeInForce
 
 
 def main():
     """Gap Day Trading Bot"""
 
-    # TODO: Ticker list implementation
+    # TODO: Trade conditionals
+    # TODO: Trade execution
     # TODO: Holiday edge cases on previous weekday function
     # TODO: Display trading results/graph
     # TODO: Understand which market conditions this work for
@@ -19,9 +23,8 @@ def main():
     tickers = ['AAPL', 'SBUX']
 
     # ------------------------------------------------------------------------------
-    # Environment setup
+    # Environment Setup
     # ------------------------------------------------------------------------------
-
     # Get Alpaca environment variables
     API_KEY = os.getenv('ALPACA_API_KEY_ID')
     SECRET_KEY = os.getenv('ALPACA_SECRET_KEY')
@@ -34,17 +37,16 @@ def main():
 
 
     # ------------------------------------------------------------------------------
-    # Establish connections
+    # Establish Connections/Create Alpaca Clients
     # ------------------------------------------------------------------------------
-
-    # Create Alpaca Client
+    # Create Alpaca clients
     stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
+    trading_client = TradingClient(API_KEY, SECRET_KEY, paper=True)
 
 
     #------------------------------------------------------------------------------
-    # Get previous trading day's high/low
+    # Get Previous Trading Day's High/Low
     #------------------------------------------------------------------------------
-
     start_dt = get_last_weekday()
     end_dt = start_dt + datetime.timedelta(days=1)
     print("[ INFO ] Fetching previous day bar for", ", ".join(tickers))
@@ -52,17 +54,33 @@ def main():
     previous_day_bar = stock_client.get_stock_bars(request_params)
     # print('Previous day bar:', previous_day_bar)
 
+
     for ticker in tickers:
+        # Print each ticker's previous high and low
         previous_high = previous_day_bar[ticker][0].high
         previous_low = previous_day_bar[ticker][0].low
-        print(f'\033[1m{ticker}\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
+        print(f'\033[1m---{ticker}---\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
+
 
         #------------------------------------------------------------------------------
-        # TRADE CONDITIONS AND EXECUTIONS GO HERE
+        # TRADE CONDITIONS AND EXECUTIONS
         #------------------------------------------------------------------------------
+        gap_up = False
+        gap_down = False
+        # [Conditions for gap up and gap down]
+
+        if gap_down:
+
+            order_data = LimitOrderRequest(symbol=ticker, limit_price=previous_low+0.02, qty=100, side=OrderSide.BUY, time_in_force=TimeInForce.DAY)
+            limit_order = trading_client.submit_order(order_data=order_data)
+        elif gap_up:
+
+            order_data = LimitOrderRequest(symbol=ticker, limit_price=previous_high-0.02, qty=100, side=OrderSide.SELL, time_in_force=TimeInForce.DAY)
+            limit_order = trading_client.submit_order(order_data=order_data)
+        gap_up = False
+        gap_down = False
 
 
-    # print('Previous day high:', previous_high, '\nPrevious day low:', previous_low)
 
 
 def get_last_weekday() -> datetime.datetime:
