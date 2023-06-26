@@ -42,6 +42,11 @@ def main():
     # Create Alpaca clients
     stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
     trading_client = TradingClient(API_KEY, SECRET_KEY, paper=True)
+    
+    # Account information
+    # account = dict(trading_client.get_account())
+    # for k,v in account.items():
+    #     print(f'{k:30}{v}')
 
 
     #------------------------------------------------------------------------------
@@ -55,32 +60,54 @@ def main():
     # print('Previous day bar:', previous_day_bar)
 
 
+    ticker_obj_list = []
     for ticker in tickers:
-        # Print each ticker's previous high and low
+        # Store high/low values into ticker objects
         previous_high = previous_day_bar[ticker][0].high
         previous_low = previous_day_bar[ticker][0].low
+        ticker_obj_list.append(Tickers(ticker, previous_high, previous_low))
         print(f'\033[1m---{ticker}---\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
+        
 
-
+    for ticker in ticker_obj_list:
         #------------------------------------------------------------------------------
         # TRADE CONDITIONS AND EXECUTIONS
+        # TODO: Pull today's opening data
+        # TODO: Check gap condition
+        # TODO: Set custom time expiration on limit orders
+        # TODO: More difficult than using expiration, but hardcode a timer to cancel orders by ID if their status is not filled
+        # TODO: Set stop loss
+        # TODO: Set profit locks
+        # TODO: Consider fill speed
+        # TODO: Set FPO condition
         #------------------------------------------------------------------------------
         gap_up = False
         gap_down = False
-        # [Conditions for gap up and gap down]
-
+        # [Conditions for gap up and gap down go HERE]
         if gap_down:
 
-            order_data = LimitOrderRequest(symbol=ticker, limit_price=previous_low+0.02, qty=100, side=OrderSide.BUY, time_in_force=TimeInForce.DAY)
+            order_data = LimitOrderRequest(symbol=ticker.symbol, limit_price=previous_low+0.02, qty=100, side=OrderSide.BUY, time_in_force=TimeInForce.DAY)
             limit_order = trading_client.submit_order(order_data=order_data)
+            ticker.order_id = limit_order.id # Store order_id to cancel the order if it's not filled
         elif gap_up:
 
-            order_data = LimitOrderRequest(symbol=ticker, limit_price=previous_high-0.02, qty=100, side=OrderSide.SELL, time_in_force=TimeInForce.DAY)
+            order_data = LimitOrderRequest(symbol=ticker.symbol, limit_price=previous_high-0.02, qty=100, side=OrderSide.SELL, time_in_force=TimeInForce.DAY)
             limit_order = trading_client.submit_order(order_data=order_data)
+            ticker.order_id = limit_order.id
         gap_up = False
         gap_down = False
 
+    
 
+
+class Tickers:
+    """Ticker Object"""
+    def __init__(self, symbol, high, low):
+        self.symbol = symbol
+        self.high = high
+        self.low = low
+
+    order_id = ""
 
 
 def get_last_weekday() -> datetime.datetime:
@@ -89,6 +116,7 @@ def get_last_weekday() -> datetime.datetime:
     offset = max(1, (today.weekday() + 6) % 7 - 3)
     last_weekday = today - datetime.timedelta(days=offset)
     return last_weekday.replace(hour=0, minute=0, second=0, microsecond=0)
+
 
 if __name__ == '__main__':
     sys.exit(main())
