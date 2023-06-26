@@ -5,6 +5,7 @@ import os
 import sys
 
 from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
+from alpaca.data.live.stock import StockDataStream
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
@@ -42,6 +43,7 @@ def main():
     # Create Alpaca clients
     stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
     trading_client = TradingClient(API_KEY, SECRET_KEY, paper=True)
+    stock_stream = StockDataStream(API_KEY, SECRET_KEY)
     
     # Account information
     # account = dict(trading_client.get_account())
@@ -68,6 +70,13 @@ def main():
         ticker_obj_list.append(Tickers(ticker, previous_high, previous_low))
         print(f'\033[1m---{ticker}---\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
         
+
+    # Async handler
+    async def quote_data_handler(data):
+        # Quote data will arrive here
+        print(data)
+    stock_stream.subscribe_quotes(quote_data_handler, 'AAPL')
+    stock_stream.run()
 
     for ticker in ticker_obj_list:
         #------------------------------------------------------------------------------
