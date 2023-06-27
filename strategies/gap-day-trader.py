@@ -13,15 +13,18 @@ from alpaca.trading.enums import OrderSide, TimeInForce
 
 def main():
     """Gap Day Trading Bot"""
-
+    # TODO: Consider storing initial BUY limit order_id's into an array. Loop over the array to cancel them at 10:00
+    # TODO: How to grab today's opening price? First data in websocket stream? Call day bar? Call minute bar?
     # TODO: Trade conditionals
     # TODO: Trade execution
     # TODO: Holiday edge cases on previous weekday function
     # TODO: Display trading results/graph
-    # TODO: Understand which market conditions this work for
+    # TODO: If generalizable, add scanner implementation to generate ticker list
+    # TODO: Understand which market conditions this work for/stick to one market
 
     # Tickers: AAPL, SBUX, TSLA, NVDA, GOOG, GOOGL, MSFT, AMZN, META, JNJ, JPM, XOM, PG, COST, AMD
     tickers = ['AAPL', 'SBUX']
+
 
     # ------------------------------------------------------------------------------
     # Environment Setup
@@ -44,6 +47,8 @@ def main():
     stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
     trading_client = TradingClient(API_KEY, SECRET_KEY, paper=True)
     stock_stream = StockDataStream(API_KEY, SECRET_KEY)
+    # Add this to StockDataStream params and test during trading hours to see if we can reduce the speed of each response
+    # websocket_params={"ping_interval": 10, "ping_timeout": 180, "max_queue": 1024,}
     
     # Account information
     # account = dict(trading_client.get_account())
@@ -62,22 +67,30 @@ def main():
     # print('Previous day bar:', previous_day_bar)
 
 
-    ticker_obj_list = []
+    tickers_dict = {} # Dictionary with key as ticker symbol and value as the ticker object with other values
     for ticker in tickers:
         # Store high/low values into ticker objects
         previous_high = previous_day_bar[ticker][0].high
         previous_low = previous_day_bar[ticker][0].low
-        ticker_obj_list.append(Tickers(ticker, previous_high, previous_low))
-        print(f'\033[1m---{ticker}---\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
+        ticker_obj = Tickers(ticker, previous_high, previous_low)
+        tickers_dict[ticker_obj.symbol] = ticker_obj
+        # print(f'\033[1m---{ticker}---\033[0m\nPrevious day high: {previous_high} \nPrevious day low: {previous_low}')
         
 
     # Async handler
+    all_gap_orders_opened = False
     async def quote_data_handler(data):
+        if not all_gap_orders_opened:
+            if data.symbol
+        # Use 'data' to grab prices (maybe)
         # Quote data will arrive here
         print(data)
-    stock_stream.subscribe_quotes(quote_data_handler, 'AAPL')
+    stock_stream.subscribe_quotes(quote_data_handler, 'AAPL', 'SBUX')
     stock_stream.run()
 
+
+    # Gap orders (the limit orders that get opened at 9:30 if there's a gap)
+    gap_orders = []
     for ticker in ticker_obj_list:
         #------------------------------------------------------------------------------
         # TRADE CONDITIONS AND EXECUTIONS
@@ -97,12 +110,12 @@ def main():
 
             order_data = LimitOrderRequest(symbol=ticker.symbol, limit_price=previous_low+0.02, qty=100, side=OrderSide.BUY, time_in_force=TimeInForce.DAY)
             limit_order = trading_client.submit_order(order_data=order_data)
-            ticker.order_id = limit_order.id # Store order_id to cancel the order if it's not filled
+            gap_orders.append(limit_order.id) # Store order_id to cancel the order if it's not filled
         elif gap_up:
 
             order_data = LimitOrderRequest(symbol=ticker.symbol, limit_price=previous_high-0.02, qty=100, side=OrderSide.SELL, time_in_force=TimeInForce.DAY)
             limit_order = trading_client.submit_order(order_data=order_data)
-            ticker.order_id = limit_order.id
+            gap_orders.append(limit_order.id)
         gap_up = False
         gap_down = False
 
@@ -115,7 +128,8 @@ class Tickers:
         self.symbol = symbol
         self.high = high
         self.low = low
-
+    gap_up = False
+    gap_down = False
     order_id = ""
 
 
