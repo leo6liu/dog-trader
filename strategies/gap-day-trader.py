@@ -1,23 +1,24 @@
-# Gap Day Trading Bot
+"""gap-day-trader.py: Gap Day Trading Bot"""
+__author__ = "Ethan Chang", "Leo Battalora"
+__email__ = "ethanchang34@yahoo.com"
 
 import datetime
+import time
 import os
 import sys
 
 from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 from alpaca.data.live.stock import StockDataStream
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+from alpaca.trading.requests import LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 
 all_gaps_checked = False
 
 def main():
     """Gap Day Trading Bot"""
-    # TODO: Consider storing initial BUY limit order_id's into an array. Loop over the array to cancel them at 10:00
-    # TODO: How to grab today's opening price? First data in websocket stream? Call day bar? Call minute bar?
-    # TODO: Trade conditionals
-    # TODO: Trade execution
+    # TODO: Loop over gap_orders array to cancel them at 10:00, 10:15, or 10:30
+    # TODO: Profit-locking orders and stop losses
     # TODO: Holiday edge cases on previous weekday function
     # TODO: Display trading results/graph
     # TODO: If generalizable, add scanner implementation to generate ticker list
@@ -83,6 +84,7 @@ def main():
 
     #------------------------------------------------------------------------------
     # Stream Real-Time Stock Market Data
+    # Check for Gaps and Create Limit Orders
     #------------------------------------------------------------------------------
     gap_orders = [] # The limit orders that get opened at 9:30 if there's a gap and used later to close any unfilled gap orders
     # Async handler
@@ -114,6 +116,7 @@ def main():
                     limit_order = trading_client.submit_order(order_data=order_data)
                     gap_orders.append(limit_order.id) # Store order_id to cancel the order if it's not filled
                     
+                print(f'{data.symbol} is checked')
                 tickers_dict[data.symbol].gap_check = True
             
             # Check if all_gaps_checked should now be True
@@ -122,16 +125,40 @@ def main():
 
                 # If a ticker's gap is not checked, then all_gaps_checked is False
                 if not t_obj.gap_check:
+                    print('Not all gaps checked')
                     all_gaps_checked = False
 
         # If all tickers are checked, we can close the real-time data stream       
         else:
+            print("Stock stream close")
             stock_stream.close()
 
 
         print(data) # Quote data
     stock_stream.subscribe_quotes(quote_data_handler, 'AAPL', 'SBUX')
+    # stock_stream.subscribe_quotes(quote_data_handler, *tickers)
     stock_stream.run()
+
+
+
+    #------------------------------------------------------------------------------
+    # Close Unfilled Gap Orders
+    #------------------------------------------------------------------------------
+    close_gap_orders = False
+    while not close_gap_orders:
+        current_time = datetime.datetime.now().strftime("%H%M")
+        print('current time:', current_time)
+
+        if current_time == "13:30": # UTC
+            time.sleep(3600)
+
+        elif current_time == "14:30":
+            print('current time:', current_time)
+
+            for id in gap_orders:
+                trading_client.cancel_order_by_id(id)
+
+                # TODO: Need to store info on which tickers did not get their orders canceled so subsequent orders can be made
 
 
     print('OUTSIDE WEBSOCKET~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
