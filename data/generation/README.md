@@ -16,7 +16,9 @@
 
 ### `5SMA`: 5-period simple moving average
 
-### `15SMA`: 15-period simple moving average
+### `8SMA`: 8-period simple moving average
+
+### `13SMA`: 13-period simple moving average
 
 ### `12EMA`: 12-period exponential moving average
 
@@ -35,4 +37,4 @@ nine-period EMA of the MACD line
 ## Output file version changes
 
 ### v000
-- added columns: `timestamp`, `open`, `high`, `low`, `close`, `volume`, `5SMA`, `15SMA`, `12EMA`, `26EMA`, `MACD`, `MACDS`, `RSI`
+- added columns: `timestamp`, `open`, `high`, `low`, `close`, `volume`, `5SMA`, `8SMA`, `13SMA`, `12EMA`, `26EMA`, `MACD`, `MACDS`, `RSI`
