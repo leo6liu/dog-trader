@@ -144,11 +144,14 @@ func main() {
 				"low",
 				"close",
 				"volume",
+				"5SMA",
+				"8SMA",
+				"13SMA",
 			}
 			writer.Write(header)
 
 			// create and write rows
-			for _, bar := range bars {
+			for i, bar := range bars {
 				// skip rows prior to 8:30 AM
 				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
 					continue
@@ -166,8 +169,15 @@ func main() {
 				// get volume
 				volume := fmt.Sprintf("%d", bar.Volume)
 
+				// calculate SMAs
+				sma5 := fmt.Sprintf("%.3f", calcSMA(bars[i-4:i+1]))
+				sma8 := fmt.Sprintf("%.3f", calcSMA(bars[i-7:i+1]))
+				sma13 := fmt.Sprintf("%.3f", calcSMA(bars[i-12:i+1]))
+
+				// calculate EMAs
+
 				// write row
-				writer.Write([]string{time, open, high, low, close, volume})
+				writer.Write([]string{time, open, high, low, close, volume, sma5, sma8, sma13})
 			}
 		}
 	}
@@ -309,4 +319,13 @@ func insertBar(bars []marketdata.Bar, index int, bar marketdata.Bar) []marketdat
 
 	// Return the new array.
 	return newArray
+}
+
+func calcSMA(bars []marketdata.Bar) float64 {
+	sum := 0.0
+	for _, bar := range bars {
+		sum += bar.Close
+	}
+
+	return sum / float64(len(bars))
 }
