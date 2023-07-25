@@ -1,6 +1,9 @@
 ## Output file column definitions
 
-### `timestamp`
+### `time`
+
+format: `HH:MM`
+location: New York, NY, USA
 
 ### `open`
 
