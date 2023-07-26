@@ -9,7 +9,7 @@ Output file names will be in the format: ../tickers/SYMBOL/SYMBOL_YYYYMMDD_vXXX.
 track column content, data format, and indicator calculation metholodogy
 changes. Version change information is tracked in the README file.
 
-Output files will contain data from 8:30 AM to 4:00PM EST.
+Output files will contain data from 9:00 AM to 4:00PM EST.
 
 Current output file version: v000
 
