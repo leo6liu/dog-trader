@@ -85,8 +85,8 @@ func main() {
 			continue
 		}
 
-		startTime := time.Date(current.Year(), current.Month(), current.Day(), 7, 30, 0, 0, newYork) // 7:30 AM
-		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)   // 4:00 PM
+		startTime := time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork) // 8:00 AM
+		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)  // 4:00 PM
 
 		for _, symbol := range tickers {
 			// define output directory and filename
@@ -163,30 +163,30 @@ func main() {
 			var macdLine []float64
 			var lastMACDS float64
 			for i, bar := range bars {
-				// skip bars prior to 8:00 AM
-				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) {
+				// skip bars prior to 8:30 AM
+				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
 					continue
 				}
 
-				// initialize EMAs and MACD at 8:00 AM
-				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) {
+				// initialize EMAs and MACD at 8:30 AM
+				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
 					last12EMA = calcBarCloseSMA(bars[i-11 : i+1])
 					last26EMA = calcBarCloseSMA(bars[i-25 : i+1])
 					macdLine = append(macdLine, last12EMA-last26EMA)
 					continue
 				}
 
-				// calcualte EMAs and MACD from 8:01 AM - 8:07 AM (inclusive)
-				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) &&
-					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) {
+				// calcualte EMAs and MACD from 8:31 AM - 8:37 AM (inclusive)
+				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) &&
+					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 38, 0, 0, newYork)) {
 					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
 					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
 					macdLine = append(macdLine, last12EMA-last26EMA)
 					continue
 				}
 
-				// initialize MACDS at 8:08 (uses 9-period MACD)
-				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) {
+				// initialize MACDS at 8:38 (uses 9-period MACD)
+				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 38, 0, 0, newYork)) {
 					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
 					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
 					macdLine = append(macdLine, last12EMA-last26EMA)
@@ -194,9 +194,9 @@ func main() {
 					continue
 				}
 
-				// calcualte EMAs and MACDS from 8:09 AM - 8:29 AM (inclusive)
-				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) &&
-					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
+				// calcualte EMAs and MACDS from 8:39 AM - 8:59 AM (inclusive)
+				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 38, 0, 0, newYork)) &&
+					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 9, 0, 0, 0, newYork)) {
 					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
 					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
 					lastMACDS = calcEMA(last12EMA-last26EMA, lastMACDS, 9, MACDS_SMOOTHING)
