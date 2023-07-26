@@ -36,6 +36,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -49,6 +50,7 @@ const OUTPUT_VERSION string = "v000"
 const EMA12_SMOOTHING float64 = 2
 const EMA26_SMOOTHING float64 = 2
 const MACDS_SMOOTHING float64 = 2
+const RSI_PERIOD int = 14
 
 func main() {
 	//-------------------------------------------------------------------------
@@ -147,6 +149,7 @@ func main() {
 				"low",
 				"close",
 				"volume",
+				"VWAP",
 				"5SMA",
 				"8SMA",
 				"13SMA",
@@ -154,6 +157,7 @@ func main() {
 				"26EMA",
 				"MACD",
 				"MACDS",
+				"RSI",
 			}
 			writer.Write(header)
 
@@ -162,19 +166,36 @@ func main() {
 			var last26EMA float64
 			var macdLine []float64
 			var lastMACDS float64
+			var cumPV float64 = 0       // cumulative price-volume for calculating VWAP
+			var cumVol float64 = 0      // cumulative volume for calculating VWAP
+			var lastAvgGain float64 = 0 // for RSI
+			var lastAvgLoss float64 = 0 // for RSI
 			for i, bar := range bars {
+				// update VWAP
+				cumPV = cumPV + ((bar.High+bar.Low+bar.Close)/3)*float64(bar.Volume)
+				cumVol = cumVol + float64(bar.Volume)
+
 				// skip bars prior to 8:30 AM
 				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
 					continue
 				}
 
-				// initialize EMAs and MACD at 8:30 AM
+				// initialize EMAs, MACD, and RSI at 8:30 AM
 				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
 					last12EMA = calcBarCloseSMA(bars[i-11 : i+1])
 					last26EMA = calcBarCloseSMA(bars[i-25 : i+1])
 					macdLine = append(macdLine, last12EMA-last26EMA)
+
+					// calculate average gain for RSI
+					lastAvgGain = calcFirstAvgGainLoss(bars[i-RSI_PERIOD:i+1], true)
+					lastAvgLoss = calcFirstAvgGainLoss(bars[i-RSI_PERIOD:i+1], false)
+
 					continue
 				}
+
+				// calculate avg. gain/loss
+				lastAvgGain = calcAvgGainLoss(RSI_PERIOD, lastAvgGain, bars[i-1].Close, bar.Close, true)
+				lastAvgGain = calcAvgGainLoss(RSI_PERIOD, lastAvgGain, bars[i-1].Close, bar.Close, false)
 
 				// calcualte EMAs and MACD from 8:31 AM - 8:37 AM (inclusive)
 				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) &&
@@ -203,6 +224,12 @@ func main() {
 					continue
 				}
 
+				// reset VWAP at 9:30
+				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 9, 30, 0, 0, newYork)) {
+					cumPV = ((bar.High + bar.Low + bar.Close) / 3) * float64(bar.Volume)
+					cumVol = float64(bar.Volume)
+				}
+
 				// get time
 				time := fmt.Sprintf("%02d:%02d", bar.Timestamp.In(newYork).Hour(), bar.Timestamp.In(newYork).Minute())
 
@@ -214,6 +241,9 @@ func main() {
 
 				// get volume
 				volume := fmt.Sprintf("%d", bar.Volume)
+
+				// calculate VWAP
+				vwap := fmt.Sprintf("%.3f", cumPV/cumVol)
 
 				// calculate SMAs
 				sma5 := fmt.Sprintf("%.3f", calcBarCloseSMA(bars[i-4:i+1]))
@@ -233,8 +263,12 @@ func main() {
 				lastMACDS = calcEMA(last12EMA-last26EMA, lastMACDS, 9, MACDS_SMOOTHING)
 				macds := fmt.Sprintf("%.3f", lastMACDS)
 
+				// calculate RSI
+				rs := lastAvgGain / lastAvgLoss
+				rsi := fmt.Sprintf("%.3f", 100-100/(1+rs))
+
 				// write row
-				writer.Write([]string{time, open, high, low, close, volume, sma5, sma8, sma13, ema12, ema26, macd, macds})
+				writer.Write([]string{time, open, high, low, close, volume, vwap, sma5, sma8, sma13, ema12, ema26, macd, macds, rsi})
 			}
 		}
 	}
@@ -400,4 +434,51 @@ func calcSMA(values []float64) float64 {
 func calcEMA(price, lastEMA float64, period int, smoothing float64) float64 {
 	multiplier := smoothing / float64(period+1)
 	return price*multiplier + lastEMA*(1-multiplier)
+}
+
+/*
+gainOrLoss bool: true -> calculate avg. gain, false -> calculate avg. loss
+*/
+func calcFirstAvgGainLoss(bars []marketdata.Bar, gainOrLoss bool) float64 {
+	var gainLossSum float64 = 0
+
+	// sum gain or loss
+	for i, bar := range bars {
+		// skip first bar
+		if i == 0 {
+			continue
+		}
+
+		gain := bar.Close - bars[i-1].Close
+
+		if gainOrLoss {
+			// sum gain
+			if gain > 0 {
+				gainLossSum += gain
+			}
+		} else {
+			// sum loss
+			if gain < 0 {
+				gainLossSum += math.Abs(gain)
+			}
+		}
+	}
+
+	return gainLossSum / float64(len(bars)-1)
+}
+
+/*
+gainOrLoss bool: true -> calculate avg. gain, false -> calculate avg. loss
+*/
+func calcAvgGainLoss(period int, prevGainLoss float64, last, current float64, gainOrLoss bool) float64 {
+	var gainLoss float64
+	if gainOrLoss {
+		// calculate gain
+		gainLoss = math.Max(current-last, 0)
+	} else {
+		// calculate loss
+		gainLoss = math.Max(last-current, 0)
+	}
+
+	return (prevGainLoss*float64(period-1) + gainLoss) / float64(period)
 }
