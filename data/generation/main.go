@@ -45,7 +45,10 @@ import (
 )
 
 // define constants
-const OUTPUT_VERSION = "v000"
+const OUTPUT_VERSION string = "v000"
+const EMA12_SMOOTHING float64 = 2
+const EMA26_SMOOTHING float64 = 2
+const MACDS_SMOOTHING float64 = 2
 
 func main() {
 	//-------------------------------------------------------------------------
@@ -82,8 +85,8 @@ func main() {
 			continue
 		}
 
-		startTime := time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork) // 8:00 AM
-		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)  // 4:00 PM
+		startTime := time.Date(current.Year(), current.Month(), current.Day(), 7, 30, 0, 0, newYork) // 7:30 AM
+		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)   // 4:00 PM
 
 		for _, symbol := range tickers {
 			// define output directory and filename
@@ -150,23 +153,54 @@ func main() {
 				"12EMA",
 				"26EMA",
 				"MACD",
+				"MACDS",
 			}
 			writer.Write(header)
 
 			// create and write rows
 			var last12EMA float64
 			var last26EMA float64
-			// var lastMACDS float64
+			var macdLine []float64
+			var lastMACDS float64
 			for i, bar := range bars {
-				// skip rows prior to 8:30 AM
-				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
+				// skip bars prior to 8:00 AM
+				if bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) {
 					continue
 				}
 
-				// initialize EMAs if 8:30 AM
-				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
-					last12EMA = calcSMA(bars[i-11 : i+1])
-					last26EMA = calcSMA(bars[i-25 : i+1])
+				// initialize EMAs and MACD at 8:00 AM
+				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) {
+					last12EMA = calcBarCloseSMA(bars[i-11 : i+1])
+					last26EMA = calcBarCloseSMA(bars[i-25 : i+1])
+					macdLine = append(macdLine, last12EMA-last26EMA)
+					continue
+				}
+
+				// calcualte EMAs and MACD from 8:01 AM - 8:07 AM (inclusive)
+				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork)) &&
+					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) {
+					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
+					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
+					macdLine = append(macdLine, last12EMA-last26EMA)
+					continue
+				}
+
+				// initialize MACDS at 8:08 (uses 9-period MACD)
+				if bar.Timestamp.Equal(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) {
+					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
+					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
+					macdLine = append(macdLine, last12EMA-last26EMA)
+					lastMACDS = calcSMA(macdLine[len(macdLine)-9:])
+					continue
+				}
+
+				// calcualte EMAs and MACDS from 8:09 AM - 8:29 AM (inclusive)
+				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 8, 0, 0, newYork)) &&
+					bar.Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) {
+					last12EMA = calcEMA(bar.Close, last12EMA, 12, EMA12_SMOOTHING)
+					last26EMA = calcEMA(bar.Close, last26EMA, 26, EMA26_SMOOTHING)
+					lastMACDS = calcEMA(last12EMA-last26EMA, lastMACDS, 9, MACDS_SMOOTHING)
+					continue
 				}
 
 				// get time
@@ -182,9 +216,9 @@ func main() {
 				volume := fmt.Sprintf("%d", bar.Volume)
 
 				// calculate SMAs
-				sma5 := fmt.Sprintf("%.3f", calcSMA(bars[i-4:i+1]))
-				sma8 := fmt.Sprintf("%.3f", calcSMA(bars[i-7:i+1]))
-				sma13 := fmt.Sprintf("%.3f", calcSMA(bars[i-12:i+1]))
+				sma5 := fmt.Sprintf("%.3f", calcBarCloseSMA(bars[i-4:i+1]))
+				sma8 := fmt.Sprintf("%.3f", calcBarCloseSMA(bars[i-7:i+1]))
+				sma13 := fmt.Sprintf("%.3f", calcBarCloseSMA(bars[i-12:i+1]))
 
 				// calculate EMAs
 				last12EMA = calcEMA(bar.Close, last12EMA, 12, 2)
@@ -195,8 +229,12 @@ func main() {
 				// calculate MACD
 				macd := fmt.Sprintf("%.3f", last12EMA-last26EMA)
 
+				// calculate MACDS
+				lastMACDS = calcEMA(last12EMA-last26EMA, lastMACDS, 9, MACDS_SMOOTHING)
+				macds := fmt.Sprintf("%.3f", lastMACDS)
+
 				// write row
-				writer.Write([]string{time, open, high, low, close, volume, sma5, sma8, sma13, ema12, ema26, macd})
+				writer.Write([]string{time, open, high, low, close, volume, sma5, sma8, sma13, ema12, ema26, macd, macds})
 			}
 		}
 	}
@@ -340,16 +378,26 @@ func insertBar(bars []marketdata.Bar, index int, bar marketdata.Bar) []marketdat
 	return newArray
 }
 
-func calcSMA(bars []marketdata.Bar) float64 {
-	sum := 0.0
+func calcBarCloseSMA(bars []marketdata.Bar) float64 {
+	// Extract an array of just close values.
+	closeValues := []float64{}
 	for _, bar := range bars {
-		sum += bar.Close
+		closeValues = append(closeValues, bar.Close)
 	}
 
-	return sum / float64(len(bars))
+	return calcSMA(closeValues)
 }
 
-func calcEMA(price, lastEMA float64, period, smoothing int) float64 {
-	multiplier := float64(smoothing) / float64(period+1)
+func calcSMA(values []float64) float64 {
+	sum := 0.0
+	for _, value := range values {
+		sum += value
+	}
+
+	return sum / float64(len(values))
+}
+
+func calcEMA(price, lastEMA float64, period int, smoothing float64) float64 {
+	multiplier := smoothing / float64(period+1)
 	return price*multiplier + lastEMA*(1-multiplier)
 }
