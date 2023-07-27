@@ -87,9 +87,10 @@ func main() {
 			continue
 		}
 
-		startTime := time.Date(current.Year(), current.Month(), current.Day(), 8, 0, 0, 0, newYork) // 8:00 AM
+		startTime := time.Date(current.Year(), current.Month(), current.Day(), 6, 0, 0, 0, newYork) // 6:00 AM
 		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)  // 4:00 PM
 
+		tickers:
 		for _, symbol := range tickers {
 			// define output directory and filename
 			outputDirectory := fmt.Sprintf("../tickers/%s", symbol)
@@ -108,13 +109,13 @@ func main() {
 			// fill in bars that do not exist
 			for i := 0; i < len(bars); i++ {
 				if i == 0 {
-					// if first minute is not 8:00 AM, then exit
-					if !bars[i].Timestamp.Equal(startTime) {
-						fmt.Println("[ ERROR ] First minute bar is not 8:00 AM")
-						os.Exit(1)
+					// if first minute is before 8:05, then exit
+					if !bars[i].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
+						fmt.Printf("[ ERROR ] First minute bar is not before 8:25 AM. Skipping %s on %s\n", symbol, current)
+						break tickers
 					}
 
-					// skip 8:00 AM minute
+					// skip first minute
 					continue
 				}
 
