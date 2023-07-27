@@ -195,7 +195,7 @@ func main() {
 
 				// calculate avg. gain/loss
 				lastAvgGain = calcAvgGainLoss(RSI_PERIOD, lastAvgGain, bars[i-1].Close, bar.Close, true)
-				lastAvgGain = calcAvgGainLoss(RSI_PERIOD, lastAvgGain, bars[i-1].Close, bar.Close, false)
+				lastAvgLoss = calcAvgGainLoss(RSI_PERIOD, lastAvgLoss, bars[i-1].Close, bar.Close, false)
 
 				// calcualte EMAs and MACD from 8:31 AM - 8:37 AM (inclusive)
 				if bar.Timestamp.After(time.Date(current.Year(), current.Month(), current.Day(), 8, 30, 0, 0, newYork)) &&
@@ -449,18 +449,12 @@ func calcFirstAvgGainLoss(bars []marketdata.Bar, gainOrLoss bool) float64 {
 			continue
 		}
 
-		gain := bar.Close - bars[i-1].Close
-
 		if gainOrLoss {
-			// sum gain
-			if gain > 0 {
-				gainLossSum += gain
-			}
+			// calculate gain
+			gainLossSum += math.Max(bar.Close-bars[i-1].Close, 0)
 		} else {
 			// sum loss
-			if gain < 0 {
-				gainLossSum += math.Abs(gain)
-			}
+			gainLossSum += math.Max(bars[i-1].Close-bar.Close, 0)
 		}
 	}
 
