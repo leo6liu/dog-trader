@@ -104,7 +104,7 @@ func main() {
 				Start:     startTime,
 				End:       endTime,
 			})
-			panicOnNil(err)
+			panicOnNotNil(err)
 
 			// fill in bars that do not exist
 			for i := 0; i < len(bars); i++ {
@@ -136,9 +136,9 @@ func main() {
 
 			// create output file and writer
 			err = os.MkdirAll(outputDirectory, 0755)
-			panicOnNil(err)
+			panicOnNotNil(err)
 			file, err := os.Create(fmt.Sprintf("%s/%s", outputDirectory, outputFilename))
-			panicOnNil(err)
+			panicOnNotNil(err)
 			writer := csv.NewWriter(file)
 			defer writer.Flush()
 
@@ -279,7 +279,7 @@ func main() {
 // helper functions
 //----------------------------------------------------------------------------
 
-func panicOnNil(value interface{}) {
+func panicOnNotNil(value interface{}) {
 	if value != nil {
 		panic(value)
 	}
