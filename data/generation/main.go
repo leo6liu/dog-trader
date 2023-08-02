@@ -109,9 +109,15 @@ func main() {
 			// fill in bars that do not exist
 			for i := 0; i < len(bars); i++ {
 				if i == 0 {
-					// if first minute is before 8:05, then exit
-					if !bars[i].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
+					// if first minute is not before 8:05, then exit (not enough bars to generate pre-market data)
+					if !bars[0].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
 						fmt.Printf("[ ERROR ] First minute bar is not before 8:25 AM. Skipping %s on %s\n", symbol, current)
+						break tickers
+					}
+
+					// if first minute doesn't have any volume, then exit (prevent NaN VWAPs)
+					if bars[0].Volume == 0 {
+						fmt.Printf("[ ERROR ] First minute bar has no volume. Skipping %s on %s\n", symbol, current)
 						break tickers
 					}
 
@@ -243,7 +249,7 @@ func main() {
 				// get volume
 				volume := fmt.Sprintf("%d", bar.Volume)
 
-				// calculate VWAP
+				// calculate VWAP (TODO: prevent NaN VWAPs)
 				vwap := fmt.Sprintf("%.3f", cumPV/cumVol)
 
 				// calculate SMAs
