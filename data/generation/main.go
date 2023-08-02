@@ -112,7 +112,7 @@ func main() {
 				if i == 0 {
 					// if first minute is not before 8:05, then exit (not enough bars to generate pre-market data)
 					if !bars[0].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
-						fmt.Printf("[ ERROR ] First minute bar is not before 8:25 AM. Skipping %s on %s\n", symbol, current)
+						fmt.Printf("[ ERROR ] First minute bar is not before 8:05 AM. Skipping %s on %s\n", symbol, current)
 						break tickers
 					}
 
