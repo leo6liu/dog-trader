@@ -10,6 +10,12 @@ import os
 import sys
 import json
 
+import yfinance as yf
+
+
+tsla = yf.Ticker("TSLA")
+print(tsla.earnings_dates)
+
 
 file = open("earnings.json")
 data = json.load(file)
