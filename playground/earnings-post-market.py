@@ -10,17 +10,25 @@ import os
 import sys
 import json
 
-from yahoo_earnings_calendar import YahooEarningsCalendar
+# from yahoo_earnings_calendar import YahooEarningsCalendar
+import yfinance as yf
 
+ticker = "TSLA"
+
+earnings_dates = yf.Ticker(ticker).earnings # returns dict
+
+for earnings_date in earnings_dates:
+    print(earnings_date)
+    print(earnings_date['earningsDate'])
 
 # date_from = datetime.datetime.strptime(
 #     'May 5 2017  10:00AM', '%b %d %Y %I:%M%p')
 # date_to = datetime.datetime.strptime(
 #     'May 8 2023  1:00PM', '%b %d %Y %I:%M%p')
-yec = YahooEarningsCalendar()
-earnings_dates = yec.get_earnings_of('AAPL')
-for earnings_date in earnings_dates:
-    print(earnings_date['startdatetime'])
+# yec = YahooEarningsCalendar()
+# earnings_dates = yec.get_earnings_of('TSLA')
+# for earnings_date in earnings_dates:
+#     print(earnings_date['startdatetime'])
 # print(yec.earnings_on(date_from))
 # print(yec.earnings_between(date_from, date_to))
 
