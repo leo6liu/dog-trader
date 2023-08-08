@@ -7,6 +7,7 @@ __author__ = "Ethan Chang"
 __email__ = "ethanchang34@yahoo.com"
 
 import datetime
+import pytz
 import pandas as pd
 import time
 import os
@@ -17,13 +18,23 @@ import yfinance as yf
 from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 
 
+# declare ticker
 ticker = "TSLA"
 
-# Get Alpaca environment variables
+# get Alpaca environment variables
 API_KEY = os.getenv('APCA_API_KEY_ID')
 SECRET_KEY = os.getenv('APCA_API_SECRET_KEY')
 
+# check for missing alpaca environment variables
+if API_KEY is None or SECRET_KEY is None:
+    print('[ ERROR ] Environment variables ALPACA_API_KEY_ID or ALPACA_SECRET_KEY not found.')
+    print('[ INFO ] Exiting...')
+    quit()
 
+# create Alpaca clients
+stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
+
+# create empty dataframe to populate and export as csv at the end
 data = {
     'Date': [],
     '4:01PM': [],
@@ -37,16 +48,20 @@ data = {
 }
 earnings_df = pd.DataFrame(data)
 
-
-today = datetime.date.today()
+# get earnings dates
+today = datetime.datetime.now(tz=pytz.timezone('America/New_York'))
 df = yf.Ticker(ticker)
 earnings_dates = df.get_earnings_dates(limit=28).index 
 
 for date in earnings_dates:
+    datetime_obj = date.to_pydatetime() # convert Timestamp to datetime to they can be compared
     new_row = []
-    if date < today:
+    # only grab dates in the past
+    if datetime_obj < today:
         new_row.append(date)
-    
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=datetime_obj, end=datetime_obj, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)
+        print(price)
 
 
 
