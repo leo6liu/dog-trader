@@ -1,42 +1,53 @@
 '''
-This script should read a file containing earnings dates for certain tickers
-and pull post market values and export it as a csv so it can be copied into the
-google sheets for analysis.
+This script should pull earnings dates for a single ticker and then pull post-market prices at 
+different times and export it as a csv so it can be copied into a google sheets for analysis.
+Google sheets: https://docs.google.com/spreadsheets/d/1UxmLRIjj0FW-c8tXj40IWlSjulzNBA1r07jE0qD6QW8/edit?usp=sharing
 '''
+__author__ = "Ethan Chang"
+__email__ = "ethanchang34@yahoo.com"
 
 import datetime
+import pandas as pd
 import time
 import os
 import sys
 import json
 
 import yfinance as yf
+from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 
 
-tsla = yf.Ticker("TSLA")
-earnings_dates = tsla.get_earnings_dates(limit=28).index 
+ticker = "TSLA"
 
-for i in earnings_dates:
-    print(i)
+# Get Alpaca environment variables
+API_KEY = os.getenv('APCA_API_KEY_ID')
+SECRET_KEY = os.getenv('APCA_API_SECRET_KEY')
 
 
+data = {
+    'Date': [],
+    '4:01PM': [],
+    '4:05PM': [],
+    '4:30PM': [],
+    '5:00PM': [],
+    '5:30PM': [],
+    '6:00PM': [],
+    '6:30PM': [],
+    '7:00PM': []
+}
+earnings_df = pd.DataFrame(data)
 
-# file = open("earnings.json")
-# data = json.load(file)
 
-# {
-#     "TSLA":
-#         ["2023-07-19T20:00:00+00:00", "2023-04-19T20:00:00+00:00"]
-# }
+today = datetime.date.today()
+df = yf.Ticker(ticker)
+earnings_dates = df.get_earnings_dates(limit=28).index 
 
-# date is in ISO 8601 format
-# for ticker in data:
-#     print(ticker)
-#     for date in data[ticker]:
-#         print(date)
-#         print(datetime.datetime.fromisoformat(date))
+for date in earnings_dates:
+    new_row = []
+    if date < today:
+        new_row.append(date)
+    
 
-# file.close()
 
 
 # start_dt = datetime(2023, 1, 27, 14, 40, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:40 UTC
