@@ -14,11 +14,15 @@ import yfinance as yf
 
 
 tsla = yf.Ticker("TSLA")
-print(tsla.earnings_dates)
+earnings_dates = tsla.get_earnings_dates(limit=28).index 
+
+for i in earnings_dates:
+    print(i)
 
 
-file = open("earnings.json")
-data = json.load(file)
+
+# file = open("earnings.json")
+# data = json.load(file)
 
 # {
 #     "TSLA":
@@ -26,13 +30,13 @@ data = json.load(file)
 # }
 
 # date is in ISO 8601 format
-for ticker in data:
-    print(ticker)
-    for date in data[ticker]:
-        print(date)
-        print(datetime.datetime.fromisoformat(date))
+# for ticker in data:
+#     print(ticker)
+#     for date in data[ticker]:
+#         print(date)
+#         print(datetime.datetime.fromisoformat(date))
 
-file.close()
+# file.close()
 
 
 # start_dt = datetime(2023, 1, 27, 14, 40, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:40 UTC
