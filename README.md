@@ -2,6 +2,14 @@
 
 A trading bot which uses an ML model trained on historical stock data.
 
+## Repository Rules
+
+- Don't make any commits to main
+- Create branches with naming convention: 
+  - `feature/lowercase-words-with-dashes`
+  - `bugfix/lowercase-words-with-dashes`
+  - `release/lowercase-words-with-dashes`
+
 ## What is finished?
 
 - DB table to store minute bar data has been created.
