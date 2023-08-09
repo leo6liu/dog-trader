@@ -59,11 +59,13 @@ def main():
     # get earnings dates
     today = datetime.datetime.now(tz=timezone.utc)
     df = yf.Ticker(ticker)
-    earnings_dates = df.get_earnings_dates(limit=28).index
+    earnings_dates = df.get_earnings_dates(limit=16).index # error when limit=28 cuz of no data on some prices
 
     for date in earnings_dates:
         # convert Timestamp to datetime and set to 4PM
         datetime_obj = date.to_pydatetime().replace(hour=16, minute = 0, second = 0)
+
+        # create datetime array of times you want to pull prices
         time_arr = create_time_arr(datetime_obj)
         
         new_row = []
@@ -76,7 +78,11 @@ def main():
                 price = stock_client.get_stock_bars(request_params)[ticker][0]
                 new_row.append(price.close)
 
-            print(new_row)
+            # print(new_row)
+            earnings_df.loc[len(earnings_df.index)] = new_row
+       
+    
+    print(earnings_df)
 
 
 
