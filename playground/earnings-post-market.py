@@ -7,6 +7,7 @@ __author__ = "Ethan Chang"
 __email__ = "ethanchang34@yahoo.com"
 
 import datetime
+from datetime import timezone
 import pytz
 import pandas as pd
 import time
@@ -37,6 +38,7 @@ stock_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 # create empty dataframe to populate and export as csv at the end
 data = {
     'Date': [],
+    '4:00PM': [],
     '4:01PM': [],
     '4:05PM': [],
     '4:30PM': [],
@@ -49,20 +51,71 @@ data = {
 earnings_df = pd.DataFrame(data)
 
 # get earnings dates
-today = datetime.datetime.now(tz=pytz.timezone('America/New_York'))
+today = datetime.datetime.now(tz=timezone.utc)
 df = yf.Ticker(ticker)
-earnings_dates = df.get_earnings_dates(limit=28).index 
+earnings_dates = df.get_earnings_dates(limit=28).index
 
 for date in earnings_dates:
-    datetime_obj = date.to_pydatetime() # convert Timestamp to datetime to they can be compared
+    # convert Timestamp to datetime and set to 4PM
+    datetime_obj = date.to_pydatetime().replace(hour=16, minute = 0, second = 0)
+    
     new_row = []
     # only grab dates in the past
     if datetime_obj < today:
-        new_row.append(date)
-        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=datetime_obj, end=datetime_obj, timeframe=TimeFrame.Minute)
-        price = stock_client.get_stock_bars(request_params)
-        print(price)
+        new_row.append(datetime_obj)
 
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=datetime_obj, end=datetime_obj, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+        # print(datetime_obj, price.close, price.timestamp)
+
+        newtime = datetime_obj + datetime.timedelta(minutes=1)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(minutes=5)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(minutes=30)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(hours=1)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(hours=1, minutes=30)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(hours=2)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(hours=2, minutes=30)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        newtime = datetime_obj + datetime.timedelta(hours=3)
+        request_params = StockBarsRequest(symbol_or_symbols=ticker, start=newtime, end=newtime, timeframe=TimeFrame.Minute)
+        price = stock_client.get_stock_bars(request_params)[ticker][0]
+        new_row.append(price.close)
+
+        print(new_row)
+
+
+# datetime_obj = datetime.datetime(2023, 8, 7, 19, 45, 0, 0, tzinfo=timezone.utc)
+# request_params = StockBarsRequest(symbol_or_symbols=ticker, start=datetime_obj, end=datetime_obj, timeframe=TimeFrame.Minute)
+# response = stock_client.get_stock_bars(request_params)[ticker][0].close
+# print(response)
 
 
 # start_dt = datetime(2023, 1, 27, 14, 40, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:40 UTC
