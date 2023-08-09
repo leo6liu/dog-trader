@@ -18,9 +18,9 @@ from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 
 
 def main():
-    
+
     # declare ticker
-    ticker = "TSLA"
+    ticker = "MSFT"
 
     # get Alpaca environment variables
     API_KEY = os.getenv('APCA_API_KEY_ID')
@@ -57,8 +57,8 @@ def main():
     earnings_dates = df.get_earnings_dates(limit=28).index # error when limit=28 cuz of no data on some prices
 
     # [TOGGLE] Check that earnings are post-market by looking at the time
-    # for index, val in enumerate(earnings_dates):
-    #     print(index, val)
+    for index, val in enumerate(earnings_dates):
+        print(index, val)
 
     for date in earnings_dates:
         # convert Timestamp to datetime and set to 4PM
