@@ -9,12 +9,9 @@ __email__ = "ethanchang34@yahoo.com"
 import datetime
 from datetime import timezone
 from typing import List
-import pytz
 import pandas as pd
-import time
 import os
 import sys
-import json
 
 import yfinance as yf
 from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
