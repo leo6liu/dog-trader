@@ -79,25 +79,6 @@ def main():
             print(new_row)
 
 
-    # datetime_obj = datetime.datetime(2023, 8, 7, 19, 45, 0, 0, tzinfo=timezone.utc)
-    # request_params = StockBarsRequest(symbol_or_symbols=ticker, start=datetime_obj, end=datetime_obj, timeframe=TimeFrame.Minute)
-    # response = stock_client.get_stock_bars(request_params)[ticker][0].close
-    # print(response)
-
-
-    # start_dt = datetime(2023, 1, 27, 14, 40, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:40 UTC
-    # end_dt = datetime(2023, 1, 27, 14, 42, 0, 0, tzinfo=timezone.utc) # 2023/01/27 14:42 UTC
-
-    # ------------------------------------------------------------------------------
-    # Example of getting alpaca data (need changes to minutes and `looping list date)
-    # ------------------------------------------------------------------------------
-    # start_dt = get_last_weekday()
-    #     end_dt = start_dt + datetime.timedelta(days=1)
-    #     print("[ INFO ] Fetching previous day bar for", ", ".join(tickers))
-    #     request_params = StockBarsRequest(symbol_or_symbols=tickers, start=start_dt, end=end_dt, timeframe=TimeFrame.Day)
-    #     previous_day_bar = stock_client.get_stock_bars(request_params)
-    #     # print('Previous day bar:', previous_day_bar)
-
 
 def create_time_arr(datetime_obj) -> List[datetime.datetime]:
     """Create an array of datetimes: 4:01PM, 4:05PM, etc."""
