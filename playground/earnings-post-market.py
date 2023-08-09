@@ -18,8 +18,7 @@ from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 
 
 def main():
-    # TODO: Just pull date as for first column to clean up datetime look
-
+    
     # declare ticker
     ticker = "TSLA"
 
@@ -68,11 +67,14 @@ def main():
         # create datetime array of times you want to pull prices
         time_arr = create_time_arr(datetime_obj)
         
+        # new_row to be appended to earnings_df dataframe
         new_row = [None]*10
+
         # only grab dates in the past
         if datetime_obj < today:
-            new_row[0] = datetime_obj # [JUST PULL DATE]
+            new_row[0] = datetime_obj.date() # [TOGGLE] remove .date() if you want to see time/timezone
 
+            # get stock bar at a specific time
             for index, time in enumerate(time_arr):
                 request_params = StockBarsRequest(symbol_or_symbols=ticker, start=time, end=time, timeframe=TimeFrame.Minute)
                 try:
@@ -82,6 +84,7 @@ def main():
                     # print("Error: " + str(e))
                     print(f"No data found for {ticker} at {time}")                
 
+            # append new_row to earnings_df dataframe
             earnings_df.loc[len(earnings_df.index)] = new_row
     
     print(earnings_df)
