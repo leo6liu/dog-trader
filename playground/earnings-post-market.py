@@ -56,7 +56,11 @@ def main():
     # get earnings dates
     today = datetime.datetime.now(tz=timezone.utc)
     df = yf.Ticker(ticker)
-    earnings_dates = df.get_earnings_dates(limit=16).index # error when limit=28 cuz of no data on some prices
+    earnings_dates = df.get_earnings_dates(limit=28).index # error when limit=28 cuz of no data on some prices
+
+    # [TOGGLE] Check that earnings are post-market by looking at the time
+    # for index, val in enumerate(earnings_dates):
+    #     print(index, val)
 
     for date in earnings_dates:
         # convert Timestamp to datetime and set to 4PM
@@ -65,21 +69,25 @@ def main():
         # create datetime array of times you want to pull prices
         time_arr = create_time_arr(datetime_obj)
         
-        new_row = []
+        new_row = [None]*10
         # only grab dates in the past
         if datetime_obj < today:
-            new_row.append(datetime_obj) # [JUST PULL DATE]
+            new_row[0] = datetime_obj # [JUST PULL DATE]
 
-            for time in time_arr:
+            for index, time in enumerate(time_arr):
                 request_params = StockBarsRequest(symbol_or_symbols=ticker, start=time, end=time, timeframe=TimeFrame.Minute)
-                price = stock_client.get_stock_bars(request_params)[ticker][0]
-                new_row.append(price.close)
+                try:
+                    price = stock_client.get_stock_bars(request_params)[ticker][0]
+                    new_row[index+1] = price.close
+                except Exception as e:
+                    # print("Error: " + str(e))
+                    print(f"No data found for {ticker} at {time}")                
 
-            # print(new_row)
             earnings_df.loc[len(earnings_df.index)] = new_row
-       
     
     print(earnings_df)
+
+    # export datafram as csv to earnings folder
     earnings_df.to_csv(f"./earnings/{ticker}_earnings.csv")
 
 
