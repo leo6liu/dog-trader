@@ -19,7 +19,6 @@ from alpaca.data import StockHistoricalDataClient, TimeFrame, StockBarsRequest
 
 def main():
     # TODO: Just pull date as for first column to clean up datetime look
-    # TODO: Error handling on cases where there's no price due to lack of volume
 
     # declare ticker
     ticker = "TSLA"
