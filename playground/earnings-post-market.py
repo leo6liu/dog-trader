@@ -83,6 +83,7 @@ def main():
        
     
     print(earnings_df)
+    earnings_df.to_csv(f"./earnings/{ticker}_earnings.csv")
 
 
 
