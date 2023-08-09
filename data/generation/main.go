@@ -90,13 +90,14 @@ func main() {
 		startTime := time.Date(current.Year(), current.Month(), current.Day(), 6, 0, 0, 0, newYork) // 6:00 AM
 		endTime := time.Date(current.Year(), current.Month(), current.Day(), 16, 0, 0, 0, newYork)  // 4:00 PM
 
-		tickers:
+	tickers:
 		for _, symbol := range tickers {
 			// define output directory and filename
 			outputDirectory := fmt.Sprintf("../tickers/%s", symbol)
-			outputFilename := fmt.Sprintf("%s_%d%02d%02d_%s.csv", symbol, current.Year(), current.Month(), current.Day(), OUTPUT_VERSION)
+			outputDataFilename := fmt.Sprintf("%s_%d%02d%02d_data_%s.csv", symbol, current.Year(), current.Month(), current.Day(), OUTPUT_VERSION)
+			outputMetaFilename := fmt.Sprintf("%s_%d%02d%02d_meta_%s.json", symbol, current.Year(), current.Month(), current.Day(), OUTPUT_VERSION)
 
-			fmt.Println("[ INFO ] Generating file:", outputFilename)
+			fmt.Println("[ INFO ] Generating files:", outputDataFilename, outputMetaFilename)
 
 			// get minute bars for day and ticker from Alpaca
 			bars, err := marketdata.GetBars(symbol, marketdata.GetBarsRequest{
@@ -109,9 +110,15 @@ func main() {
 			// fill in bars that do not exist
 			for i := 0; i < len(bars); i++ {
 				if i == 0 {
-					// if first minute is before 8:05, then exit
-					if !bars[i].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
-						fmt.Printf("[ ERROR ] First minute bar is not before 8:25 AM. Skipping %s on %s\n", symbol, current)
+					// if first minute is not before 8:05, then exit (not enough bars to generate pre-market data)
+					if !bars[0].Timestamp.Before(time.Date(current.Year(), current.Month(), current.Day(), 8, 05, 0, 0, newYork)) {
+						fmt.Printf("[ ERROR ] First minute bar is not before 8:05 AM. Skipping %s on %s\n", symbol, current)
+						break tickers
+					}
+
+					// if first minute doesn't have any volume, then exit (prevent NaN VWAPs)
+					if bars[0].Volume == 0 {
+						fmt.Printf("[ ERROR ] First minute bar has no volume. Skipping %s on %s\n", symbol, current)
 						break tickers
 					}
 
@@ -134,16 +141,62 @@ func main() {
 				}
 			}
 
-			// create output file and writer
+			// get last 5 day bars (with weekends and holidays, 5 should suffice to get at least one)
+			dayBars, err := marketdata.GetBars(symbol, marketdata.GetBarsRequest{
+				TimeFrame: marketdata.OneDay,
+				Start:     startTime.AddDate(0, 0, -5),
+				End:       startTime,
+			})
+			panicOnNotNil(err)
+
+			// skip day if there is no previous market day data in the last 5 calendar days
+			if len(dayBars) == 0 {
+				fmt.Println("[ ERROR ] No market data in last 5 days to generate file header.")
+				break tickers
+			}
+
+			// create output directory
 			err = os.MkdirAll(outputDirectory, 0755)
 			panicOnNotNil(err)
-			file, err := os.Create(fmt.Sprintf("%s/%s", outputDirectory, outputFilename))
-			panicOnNotNil(err)
-			writer := csv.NewWriter(file)
-			defer writer.Flush()
 
-			// write header
-			header := []string{
+			//----------------------------------------------------------------------
+			// write metadata file
+			//----------------------------------------------------------------------
+
+			metaFile, err := os.Create(fmt.Sprintf("%s/%s", outputDirectory, outputMetaFilename))
+			panicOnNotNil(err)
+			defer metaFile.Close()
+
+			// get metadata from last market day
+			metadata := DayMetadata{
+				PrevDate:   yyyymmddStringFromTimeStruct(dayBars[len(dayBars)-1].Timestamp),
+				PrevOpen:   dayBars[len(dayBars)-1].Open,
+				PrevHigh:   dayBars[len(dayBars)-1].High,
+				PrevLow:    dayBars[len(dayBars)-1].Low,
+				PrevClose:  dayBars[len(dayBars)-1].Close,
+				PrevVolume: dayBars[len(dayBars)-1].Volume,
+				PrevVWAP:   dayBars[len(dayBars)-1].VWAP,
+			}
+
+			// encode the metadata to json
+			jsonMetadata, err := json.Marshal(metadata)
+			panicOnNotNil(err)
+
+			// write json to file
+			metaFile.Write(jsonMetadata)
+
+			//----------------------------------------------------------------------
+			// write data file
+			//----------------------------------------------------------------------
+
+			// create output data file and writer
+			dataFile, err := os.Create(fmt.Sprintf("%s/%s", outputDirectory, outputDataFilename))
+			panicOnNotNil(err)
+			dataWriter := csv.NewWriter(dataFile)
+			defer dataWriter.Flush()
+
+			// write data columns header
+			dataWriter.Write([]string{
 				"time",
 				"open",
 				"high",
@@ -159,8 +212,7 @@ func main() {
 				"MACD",
 				"MACDS",
 				"RSI",
-			}
-			writer.Write(header)
+			})
 
 			// create and write rows
 			var last12EMA float64
@@ -244,6 +296,9 @@ func main() {
 				volume := fmt.Sprintf("%d", bar.Volume)
 
 				// calculate VWAP
+				if cumVol == 0 {
+					fmt.Println("[ ERROR ] Cumulative volume is 0! This will result in a NaN VWAP.", bar.Timestamp)
+				}
 				vwap := fmt.Sprintf("%.3f", cumPV/cumVol)
 
 				// calculate SMAs
@@ -269,10 +324,24 @@ func main() {
 				rsi := fmt.Sprintf("%.3f", 100-100/(1+rs))
 
 				// write row
-				writer.Write([]string{time, open, high, low, close, volume, vwap, sma5, sma8, sma13, ema12, ema26, macd, macds, rsi})
+				dataWriter.Write([]string{time, open, high, low, close, volume, vwap, sma5, sma8, sma13, ema12, ema26, macd, macds, rsi})
 			}
 		}
 	}
+}
+
+//----------------------------------------------------------------------------
+// types
+//----------------------------------------------------------------------------
+
+type DayMetadata struct {
+	PrevDate   string  `json:"prev_date"`
+	PrevOpen   float64 `json:"prev_open"`
+	PrevHigh   float64 `json:"prev_high"`
+	PrevLow    float64 `json:"prev_low"`
+	PrevClose  float64 `json:"prev_close"`
+	PrevVolume uint64  `json:"prev_volume"`
+	PrevVWAP   float64 `json:"prev_vwap"`
 }
 
 //----------------------------------------------------------------------------
@@ -476,4 +545,8 @@ func calcAvgGainLoss(period int, prevGainLoss float64, last, current float64, ga
 	}
 
 	return (prevGainLoss*float64(period-1) + gainLoss) / float64(period)
+}
+
+func yyyymmddStringFromTimeStruct(time time.Time) string {
+	return fmt.Sprintf("%d%02d%02d", time.Year(), time.Month(), time.Day())
 }
