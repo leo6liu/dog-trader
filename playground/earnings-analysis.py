@@ -22,6 +22,14 @@ for ticker in tickers: # loop through tickers rather than csv files so we can us
     with open(f"./earnings/{ticker}_earnings.csv") as earnings_csv:
         reader = csv.reader(earnings_csv, delimiter=",")
 
+        # analysis
+        same_direction = 0
+        length = 0
         for row in reader:
-            print(row[0], row[1])
-
+            # fraction of scenarios where movement direction from 4:00 to 4:05 is the same as direction from 4:05 to 4:30
+            if row[4] > row[2] and row[5] > row[4]:
+                same_direction += 1
+            elif row[4] < row[2] and row[5] < row[4]:
+                same_direction += 1
+            length += 1
+        print(f"{ticker} 4:00 -> 4:05 and 4:05 -> 4:30 same direction: {same_direction/length}")
