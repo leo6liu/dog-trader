@@ -32,4 +32,4 @@ for ticker in tickers: # loop through tickers rather than csv files so we can us
             elif row[4] < row[2] and row[5] < row[4]:
                 same_direction += 1
             length += 1
-        print(f"{ticker} 4:00 -> 4:05 and 4:05 -> 4:30 same direction: {same_direction/length}")
+        print(f"{ticker} 4:00 -> 4:05 and 4:05 -> 4:00 same direction: {same_direction/length}")
