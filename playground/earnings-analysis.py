@@ -36,7 +36,7 @@ for file_name in file_names:
 #             length += 1
 #         print(f"{ticker} 4:00 -> 4:05 and 4:05 -> 4:00 same direction: {same_direction/length}")
 
-# ticker = "AAPL"
+ticker = "AAPL"
 # with open(f"./earnings/{ticker}_earnings.csv") as earnings_csv:
 #     reader = csv.reader(earnings_csv, delimiter=",")
 #     same_direction = 0
@@ -59,19 +59,19 @@ ticker = "MSFT"
 # MSFT lacks movement 
 
 ticker = "NFLX"
-with open(f"./earnings/{ticker}_earnings.csv") as earnings_csv:
-    reader = csv.reader(earnings_csv, delimiter=",")
-    same_direction = 0
-    length = 0
-    next(reader)
+# with open(f"./earnings/{ticker}_earnings.csv") as earnings_csv:
+#     reader = csv.reader(earnings_csv, delimiter=",")
+#     same_direction = 0
+#     length = 0
+#     next(reader)
 
-    for row in reader:
-        if abs((float(row[3]) - float(row[2]))/float(row[2])) > 0.03:
-            if row[3] > row[2] and row[8] > row[3]:
-                same_direction += 1
-            elif row[3] < row[2] and row[8] < row[3]:
-                same_direction += 1
-            length += 1
+#     for row in reader:
+#         if abs((float(row[3]) - float(row[2]))/float(row[2])) > 0.03:
+#             if row[3] > row[2] and row[8] > row[3]:
+#                 same_direction += 1
+#             elif row[3] < row[2] and row[8] < row[3]:
+#                 same_direction += 1
+#             length += 1
 
-    print(same_direction, length)
-    print(f"{ticker} 4:01 -> 4:05 -> 6:00 same direction: {same_direction/length}")
+#     print(same_direction, length)
+#     print(f"{ticker} 4:00 -> 4:01 -> 6:00 same direction: {same_direction/length}")
